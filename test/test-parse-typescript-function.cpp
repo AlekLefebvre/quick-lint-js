@@ -496,6 +496,18 @@ TEST_F(test_parse_typescript_function,
             diag_typescript_optional_parameters_not_allowed_in_javascript,  //
             question, strlen(u8"function f(param"), u8"?")));
   }
+
+  {
+    test_parser p(u8"function f({}?) {}"_sv, javascript_options,
+                  capture_diags);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(
+        p.errors,
+        ElementsAre(DIAG_TYPE_OFFSETS(
+            p.code,
+            diag_typescript_optional_parameters_not_allowed_in_javascript,  //
+            question, strlen(u8"function f({}"), u8"?")));
+  }
 }
 
 TEST_F(test_parse_typescript_function,

@@ -535,6 +535,12 @@ TEST_F(test_parse_typescript_interface, interface_with_methods) {
                             "visit_exit_function_scope",     //
                             "visit_exit_interface_scope"));  // }
   }
+
+  {
+    test_parser p(u8"interface I { f({}?); }", typescript_options);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(p.property_declarations, ElementsAre(u8"f"));
+  }
 }
 
 TEST_F(test_parse_typescript_interface, interface_with_index_signature) {
