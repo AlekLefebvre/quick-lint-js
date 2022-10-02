@@ -239,6 +239,16 @@ inline constexpr translated_string test_translation_table[] = {
         },
     },
     {
+        "'function' is here"_translatable,
+        {
+            u8"'function' is here",
+            u8"'function' is here",
+            u8"'function' is here",
+            u8"'function' is here",
+            u8"'function' is here",
+        },
+    },
+    {
         "'if' statement"_translatable,
         {
             u8"'if' statement",
@@ -296,6 +306,26 @@ inline constexpr translated_string test_translation_table[] = {
             u8"'readonly static' is not allowed; write 'static readonly' instead",
             u8"'readonly static' is not allowed; write 'static readonly' instead",
             u8"'readonly static' is not allowed; write 'static readonly' instead",
+        },
+    },
+    {
+        "'readonly' must be followed by an array type or a tuple type"_translatable,
+        {
+            u8"'readonly' must be followed by an array type or a tuple type",
+            u8"'readonly' must be followed by an array type or a tuple type",
+            u8"'readonly' must be followed by an array type or a tuple type",
+            u8"'readonly' must be followed by an array type or a tuple type",
+            u8"'readonly' must be followed by an array type or a tuple type",
+        },
+    },
+    {
+        "'readonly' only works with array types and tuple types"_translatable,
+        {
+            u8"'readonly' only works with array types and tuple types",
+            u8"'readonly' only works with array types and tuple types",
+            u8"'readonly' only works with array types and tuple types",
+            u8"'readonly' only works with array types and tuple types",
+            u8"'readonly' only works with array types and tuple types",
         },
     },
     {
@@ -656,6 +686,26 @@ inline constexpr translated_string test_translation_table[] = {
             u8"TypeScript non-null assertions are not allowed in JavaScript",
             u8"TypeScript non-null assertions are not allowed in JavaScript",
             u8"TypeScript non-null assertions are not allowed in JavaScript",
+        },
+    },
+    {
+        "TypeScript optional parameter requires parentheses"_translatable,
+        {
+            u8"TypeScript optional parameter requires parentheses",
+            u8"TypeScript optional parameter requires parentheses",
+            u8"TypeScript optional parameter requires parentheses",
+            u8"TypeScript optional parameter requires parentheses",
+            u8"TypeScript optional parameter requires parentheses",
+        },
+    },
+    {
+        "TypeScript optional parameter with type annotation requires parentheses"_translatable,
+        {
+            u8"TypeScript optional parameter with type annotation requires parentheses",
+            u8"TypeScript optional parameter with type annotation requires parentheses",
+            u8"TypeScript optional parameter with type annotation requires parentheses",
+            u8"TypeScript optional parameter with type annotation requires parentheses",
+            u8"TypeScript optional parameter with type annotation requires parentheses",
         },
     },
     {
@@ -1759,6 +1809,26 @@ inline constexpr translated_string test_translation_table[] = {
         },
     },
     {
+        "function overload signature cannot have generator '*'"_translatable,
+        {
+            u8"function overload signature cannot have generator '*'",
+            u8"function overload signature cannot have generator '*'",
+            u8"function overload signature cannot have generator '*'",
+            u8"function overload signature cannot have generator '*'",
+            u8"function overload signature cannot have generator '*'",
+        },
+    },
+    {
+        "function overload signature must be named '{1}'"_translatable,
+        {
+            u8"function overload signature must be named '{1}'",
+            u8"function overload signature must be named '{1}'",
+            u8"function overload signature must be named '{1}'",
+            u8"function overload signature must be named '{1}'",
+            u8"function overload signature must be named '{1}'",
+        },
+    },
+    {
         "function starts here"_translatable,
         {
             u8"function starts here",
@@ -2799,6 +2869,16 @@ inline constexpr translated_string test_translation_table[] = {
         },
     },
     {
+        "newline is not allowed between 'async' and 'function'"_translatable,
+        {
+            u8"newline is not allowed between 'async' and 'function'",
+            u8"newline is not allowed between 'async' and 'function'",
+            u8"newline is not allowed between 'async' and 'function'",
+            u8"newline is not allowed between 'async' and 'function'",
+            u8"newline is not allowed between 'async' and 'function'",
+        },
+    },
+    {
         "newline is not allowed between 'async' and arrow function parameter list"_translatable,
         {
             u8"newline is not allowed between 'async' and arrow function parameter list",
@@ -2909,6 +2989,16 @@ inline constexpr translated_string test_translation_table[] = {
         },
     },
     {
+        "overloaded function '{0}' declared here"_translatable,
+        {
+            u8"overloaded function '{0}' declared here",
+            u8"overloaded function '{0}' declared here",
+            u8"overloaded function '{0}' declared here",
+            u8"overloaded function '{0}' declared here",
+            u8"overloaded function '{0}' declared here",
+        },
+    },
+    {
         "private properties are not allowed in object literals"_translatable,
         {
             u8"private properties are not allowed in object literals",
@@ -2916,6 +3006,16 @@ inline constexpr translated_string test_translation_table[] = {
             u8"objects can't have privates \U0001f92b",
             u8"les propri\u00e9t\u00e9s priv\u00e9es ne sont pas autoris\u00e9es dans les litt\u00e9raux objet",
             u8"privata egenskaper \u00e4r inte till\u00e5tna i objektlitter\u00e4ler",
+        },
+    },
+    {
+        "readonly array is missing '[]'"_translatable,
+        {
+            u8"readonly array is missing '[]'",
+            u8"readonly array is missing '[]'",
+            u8"readonly array is missing '[]'",
+            u8"readonly array is missing '[]'",
+            u8"readonly array is missing '[]'",
         },
     },
     {
@@ -3626,6 +3726,16 @@ inline constexpr translated_string test_translation_table[] = {
             u8"{0} classes are not allowed in JavaScript",
             u8"{0} classes are not allowed in JavaScript",
             u8"{0} classes are not allowed in JavaScript",
+        },
+    },
+    {
+        "{0} is not the name of a parameter"_translatable,
+        {
+            u8"{0} is not the name of a parameter",
+            u8"{0} is not the name of a parameter",
+            u8"{0} is not the name of a parameter",
+            u8"{0} is not the name of a parameter",
+            u8"{0} is not the name of a parameter",
         },
     },
     {

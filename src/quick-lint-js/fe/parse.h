@@ -9,6 +9,7 @@
 #include <quick-lint-js/assert.h>
 #include <quick-lint-js/container/hash-map.h>
 #include <quick-lint-js/container/padded-string.h>
+#include <quick-lint-js/fe/buffering-visitor-stack.h>
 #include <quick-lint-js/fe/buffering-visitor.h>
 #include <quick-lint-js/fe/diag-reporter.h>
 #include <quick-lint-js/fe/diagnostic-types.h>
@@ -23,7 +24,6 @@
 #include <quick-lint-js/port/have.h>
 #include <quick-lint-js/port/warning.h>
 #include <quick-lint-js/util/try-catch-stack.h>
-#include <stack>
 #include <utility>
 
 #if QLJS_HAVE_FILE_NAME_MACRO
@@ -180,8 +180,20 @@ class parser {
     return this->parse_expression(v, precedence{});
   }
 
+  void parse_typescript_colon_for_type();
+
   void parse_and_visit_typescript_colon_type_expression(parse_visitor_base &v);
   void parse_and_visit_typescript_type_expression(parse_visitor_base &v);
+
+  void parse_and_visit_typescript_colon_type_expression_or_type_predicate(
+      parse_visitor_base &v);
+  void parse_and_visit_typescript_type_expression_or_type_predicate(
+      parse_visitor_base &v);
+
+  enum class typescript_type_arrow_or_paren {
+    arrow,
+    paren,
+  };
 
   void parse_and_visit_typescript_arrow_type_expression(parse_visitor_base &v);
   void parse_and_visit_typescript_arrow_type_expression_after_left_paren(
@@ -189,7 +201,8 @@ class parser {
   void
   parse_and_visit_typescript_arrow_type_expression_after_left_paren_no_scope(
       parse_visitor_base &v);
-  void parse_and_visit_typescript_arrow_or_paren_type_expression(
+  typescript_type_arrow_or_paren
+  parse_and_visit_typescript_arrow_or_paren_type_expression(
       parse_visitor_base &v);
   void parse_and_visit_typescript_object_type_expression(parse_visitor_base &v);
   void parse_and_visit_typescript_template_type_expression(
@@ -259,6 +272,43 @@ class parser {
   // E.g. *async function f() {}
   // In this case `*async` is consumed.
   std::optional<function_attributes> try_parse_function_with_leading_star();
+
+  // See parse_end_of_typescript_overload_signature.
+  struct overload_signature_parse_result {
+    // Invariant: is_overload_signature ? !has_missing_body_error : true
+
+    // If true, the first function was an overload signature, and the lexer is
+    // at the '(' in the second function.
+    //
+    // If false, the first function was not an overload signature, and the lexer
+    // did not change position.
+    bool is_overload_signature;
+
+    // If true, the first function's missing body is an error. If false, the
+    // first function's missing body is not an error.
+    bool has_missing_body_error;
+
+    // If is_overload_signature is true, then second_function_attributes is the
+    // attributes of the second function.
+    function_attributes second_function_attributes;
+
+    // If is_overload_signature is true, then second_function_generator_star is
+    // the span of the second function's '*' (or nullopt if it doesn't have a
+    // '*').
+    std::optional<source_code_span> second_function_generator_star;
+  };
+
+  // Given the following code:
+  //
+  //     function f()
+  //     function f() {}
+  //
+  // Immediately after parsing ')', you should call this function.
+  //
+  // See overload_signature_parse_result's members for details on the effects of
+  // this function.
+  overload_signature_parse_result parse_end_of_typescript_overload_signature(
+      const identifier &function_name);
 
   void parse_and_visit_class(
       parse_visitor_base &v, name_requirement require_name,
@@ -559,7 +609,10 @@ class parser {
   expression *parse_tagged_template(parse_visitor_base &, expression *tag);
   expression *parse_untagged_template(parse_visitor_base &);
 
-  function_attributes parse_generator_star(function_attributes);
+  // If a generator '*' is parsed, modifies *attributes and returns the span of
+  // the '*'.
+  std::optional<source_code_span> parse_generator_star(
+      function_attributes *attributes);
 
   void check_assignment_lhs(expression *);
 
@@ -740,7 +793,7 @@ class parser {
 
   // These are stored in a stack here (rather than on the C++ stack via local
   // variables) so that memory can be released in case we call setjmp.
-  std::stack<buffering_visitor> buffering_visitor_stack_;
+  buffering_visitor_stack buffering_visitor_stack_;
 
   bool in_top_level_ = true;
   bool in_async_function_ = false;

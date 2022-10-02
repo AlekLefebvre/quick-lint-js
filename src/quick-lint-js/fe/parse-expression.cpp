@@ -430,14 +430,15 @@ expression* parser::parse_primary_expression(parse_visitor_base& v,
     token_type type = this->peek().type;
     source_code_span operator_span = this->peek().span();
     this->skip();
-    expression* child =
-        this->parse_expression(v, precedence{
-                                      .binary_operators = true,
-                                      .math_or_logical_or_assignment = false,
-                                      .commas = false,
-                                      .in_operator = prec.in_operator,
-                                      .conditional_operator = false,
-                                  });
+    expression* child = this->parse_expression(
+        v, precedence{
+               .binary_operators = true,
+               .math_or_logical_or_assignment = false,
+               .commas = false,
+               .in_operator = prec.in_operator,
+               .colon_type_annotation = allow_type_annotations::never,
+               .conditional_operator = false,
+           });
     if (child->kind() == expression_kind::_missing) {
       this->diag_reporter_->report(diag_missing_operand_for_operator{
           .where = operator_span,
@@ -810,7 +811,7 @@ expression* parser::parse_async_expression_only(
     buffering_visitor return_type_visits(&this->type_expression_memory_);
     if (this->peek().type == token_type::colon && this->options_.typescript) {
       // async (params): ReturnType => {}  // TypeScript only.
-      this->parse_and_visit_typescript_colon_type_expression(
+      this->parse_and_visit_typescript_colon_type_expression_or_type_predicate(
           return_type_visits);
     }
 
@@ -881,14 +882,13 @@ expression* parser::parse_async_expression_only(
     if (this->options_.typescript) {
       parser_transaction transaction = this->begin_transaction();
 
-      buffering_visitor& parameter_visits =
-          this->buffering_visitor_stack_.emplace(
-              boost::container::pmr::new_delete_resource());
+      stacked_buffering_visitor parameter_visits =
+          this->buffering_visitor_stack_.push();
       std::optional<expression_arena::vector<expression*>> parameters;
       bool parsed_arrow_function_parameters_without_fatal_error =
           this->catch_fatal_parse_errors([&] {
             this->parse_and_visit_typescript_generic_parameters(
-                parameter_visits);
+                parameter_visits.visitor());
 
             // NOTE(strager): QLJS_PARSER_UNIMPLEMENTED here will make
             // parsed_arrow_function_parameters_without_fatal_error false.
@@ -896,7 +896,7 @@ expression* parser::parse_async_expression_only(
             this->skip();
             parameters.emplace(
                 this->parse_arrow_function_parameters_or_call_arguments(
-                    parameter_visits));
+                    parameter_visits.visitor()));
             QLJS_PARSER_UNIMPLEMENTED_IF_NOT_TOKEN(token_type::right_paren);
             this->skip();
 
@@ -920,13 +920,14 @@ expression* parser::parse_async_expression_only(
         // code path).
         buffering_visitor return_type_visits(&this->type_expression_memory_);
         if (this->peek().type == token_type::colon) {
-          this->parse_and_visit_typescript_colon_type_expression(
+          this->parse_and_visit_typescript_colon_type_expression_or_type_predicate(
               return_type_visits);
         }
         QLJS_PARSER_UNIMPLEMENTED_IF_NOT_TOKEN(token_type::equal_greater);
         return parse_arrow_function_arrow_and_body(
             std::move(*parameters),
-            /*parameter_visits=*/&parameter_visits, &return_type_visits);
+            /*parameter_visits=*/&parameter_visits.visitor(),
+            &return_type_visits);
       }
       this->roll_back_transaction(std::move(transaction));
     }
@@ -960,7 +961,6 @@ expression* parser::parse_async_expression_only(
     lexer_transaction transaction = this->lexer_.begin_transaction();
 
     source_code_span parameter_span = this->peek().span();
-    const char8* parameter_begin = parameter_span.begin();
     std::array<expression*, 1> parameters = {
         this->peek().type == token_type::kw_this
             ? this->make_expression<expression::this_variable>(parameter_span)
@@ -969,20 +969,45 @@ expression* parser::parse_async_expression_only(
     };
     this->skip();
 
+    std::optional<source_code_span> optional_question_span;
+    if (this->peek().type == token_type::question) {
+      // async param? => {}  // Invalid.
+      optional_question_span = this->peek().span();
+      parameters[0] = this->make_expression<expression::optional>(
+          parameters[0], *optional_question_span);
+      this->skip();
+    }
+
+    std::optional<source_code_span> type_colon_span;
     if (this->peek().type == token_type::colon && this->options_.typescript) {
       // async param: Type => {}  // Invalid.
-      source_code_span colon_span = this->peek().span();
+      type_colon_span = this->peek().span();
       buffering_visitor type_visits(&this->type_expression_memory_);
       this->parse_and_visit_typescript_colon_type_expression(type_visits);
       const char8* type_end = this->lexer_.end_of_previous_token();
 
       parameters[0] = this->make_expression<expression::type_annotated>(
-          parameters[0], colon_span, std::move(type_visits), type_end);
+          parameters[0], *type_colon_span, std::move(type_visits), type_end);
+    }
+
+    if (optional_question_span.has_value() && type_colon_span.has_value()) {
+      this->diag_reporter_->report(
+          diag_optional_arrow_parameter_with_type_annotation_requires_parentheses{
+              .parameter_and_annotation = parameters[0]->span(),
+              .question = *optional_question_span,
+              .type_colon = *type_colon_span,
+          });
+    } else if (optional_question_span.has_value()) {
+      this->diag_reporter_->report(
+          diag_optional_arrow_parameter_requires_parentheses{
+              .parameter_and_question = parameters[0]->span(),
+              .question = *optional_question_span,
+          });
+    } else if (type_colon_span.has_value()) {
       this->diag_reporter_->report(
           diag_arrow_parameter_with_type_annotation_requires_parentheses{
-              .parameter_and_annotation =
-                  source_code_span(parameter_begin, type_end),
-              .type_colon = colon_span,
+              .parameter_and_annotation = parameters[0]->span(),
+              .type_colon = *type_colon_span,
           });
     }
 
@@ -1325,15 +1350,14 @@ next:
   case token_type::less_less:
     if (this->options_.typescript) {
       bool parsed_as_generic_arguments;
-      buffering_visitor& generic_arguments_visits =
-          this->buffering_visitor_stack_.emplace(
-              boost::container::pmr::new_delete_resource());
+      stacked_buffering_visitor generic_arguments_visits =
+          this->buffering_visitor_stack_.push();
       this->try_parse(
           [&] {
             bool parsed_without_fatal_error = this->catch_fatal_parse_errors(
                 [this, &generic_arguments_visits] {
                   this->parse_and_visit_typescript_generic_arguments(
-                      generic_arguments_visits);
+                      generic_arguments_visits.visitor());
                 });
             if (!parsed_without_fatal_error) {
               return false;
@@ -1383,7 +1407,7 @@ next:
           },
           [&] { parsed_as_generic_arguments = false; });
       if (parsed_as_generic_arguments) {
-        generic_arguments_visits.move_into(v);
+        generic_arguments_visits.visitor().move_into(v);
         goto next;
       } else {
         goto binary_operator;
@@ -1693,10 +1717,12 @@ next:
     // function(param?)                  // TypeScript only.
     // function(param? = init)           // Invalid.
     // function(param?, ...otherParams)  // TypeScript only.
+    // param? => {}                      // Invalid.
     // let [x?] = y;                     // Invalid.
     // let {p: x?} = y;                  // Invalid.
     case token_type::comma:
     case token_type::equal:
+    case token_type::equal_greater:
     case token_type::right_curly:
     case token_type::right_paren:
     case token_type::right_square:
@@ -1932,7 +1958,8 @@ next:
     expression* child = binary_builder.last_expression();
     source_code_span colon_span = this->peek().span();
     buffering_visitor type_visitor(&this->type_expression_memory_);
-    this->parse_and_visit_typescript_colon_type_expression(type_visitor);
+    this->parse_and_visit_typescript_colon_type_expression_or_type_predicate(
+        type_visitor);
     const char8* type_end = this->lexer_.end_of_previous_token();
     binary_builder.replace_last(
         this->make_expression<expression::type_annotated>(
@@ -2118,22 +2145,47 @@ expression* parser::parse_arrow_function_expression_remainder(
     break;
 
   // (param?) => {}  // TypeScript only.
+  // param? => {}    // Invalid.
   case expression_kind::optional:
+    if (!parameter_list_begin) {
+      // param? => {}  // Invalid.
+      expression::optional* param =
+          static_cast<expression::optional*>(parameters_expression);
+      this->diag_reporter_->report(
+          diag_optional_arrow_parameter_requires_parentheses{
+              .parameter_and_question = param->span(),
+              .question = param->question_span(),
+          });
+    }
     parameters.emplace_back(parameters_expression);
     break;
 
   // param: Type => {}    // Invalid.
+  // param?: Type => {}   // Invalid.
   // (param: Type) => {}  // TypeScript only.
   case expression_kind::type_annotated: {
     // NOTE(strager): '(param): ReturnType => {}' is handled above.
     if (!parameter_list_begin) {
       expression::type_annotated* param =
           static_cast<expression::type_annotated*>(parameters_expression);
-      this->diag_reporter_->report(
-          diag_arrow_parameter_with_type_annotation_requires_parentheses{
-              .parameter_and_annotation = param->span(),
-              .type_colon = param->colon_span(),
-          });
+      if (param->child_->kind() == expression_kind::optional) {
+        // param?: Type => {}  // Invalid.
+        expression::optional* optional =
+            static_cast<expression::optional*>(param->child_);
+        this->diag_reporter_->report(
+            diag_optional_arrow_parameter_with_type_annotation_requires_parentheses{
+                .parameter_and_annotation = param->span(),
+                .question = optional->question_span(),
+                .type_colon = param->colon_span(),
+            });
+      } else {
+        // param: Type => {}  // Invalid.
+        this->diag_reporter_->report(
+            diag_arrow_parameter_with_type_annotation_requires_parentheses{
+                .parameter_and_annotation = param->span(),
+                .type_colon = param->colon_span(),
+            });
+      }
     }
     parameters.emplace_back(parameters_expression);
     break;
@@ -2343,10 +2395,12 @@ expression* parser::parse_arrow_function_body_no_scope(
   if (this->peek().type == token_type::left_curly) {
     this->parse_and_visit_statement_block_no_scope(v);
   } else {
-    this->parse_and_visit_expression(v, precedence{
-                                            .commas = false,
-                                            .in_operator = allow_in_operator,
-                                        });
+    this->parse_and_visit_expression(
+        v, precedence{
+               .commas = false,
+               .in_operator = allow_in_operator,
+               .colon_type_annotation = allow_type_annotations::never,
+           });
   }
 
   const char8* span_end = this->lexer_.end_of_previous_token();
@@ -2359,7 +2413,7 @@ expression* parser::parse_function_expression(parse_visitor_base& v,
                                               const char8* span_begin) {
   QLJS_ASSERT(this->peek().type == token_type::kw_function);
   this->skip();
-  attributes = this->parse_generator_star(attributes);
+  this->parse_generator_star(&attributes);
 
   QLJS_WARNING_PUSH
   QLJS_WARNING_IGNORE_GCC("-Wmaybe-uninitialized")
@@ -3031,15 +3085,6 @@ expression* parser::parse_jsx_or_typescript_generic_expression(
     // <(Type)>expr
     // < | Type>expr
     case token_type::ampersand:
-    case token_type::kw_bigint:
-    case token_type::kw_boolean:
-    case token_type::kw_null:
-    case token_type::kw_number:
-    case token_type::kw_object:
-    case token_type::kw_string:
-    case token_type::kw_symbol:
-    case token_type::kw_undefined:
-    case token_type::kw_void:
     case token_type::left_curly:
     case token_type::left_paren:
     case token_type::left_square:
@@ -3053,6 +3098,18 @@ expression* parser::parse_jsx_or_typescript_generic_expression(
     // <T,>(params) => {}    // Arrow function.
     // <Component></Component>  // JSX element.
     case token_type::identifier:
+    case token_type::kw_any:
+    case token_type::kw_bigint:
+    case token_type::kw_boolean:
+    case token_type::kw_never:
+    case token_type::kw_null:
+    case token_type::kw_number:
+    case token_type::kw_object:
+    case token_type::kw_string:
+    case token_type::kw_symbol:
+    case token_type::kw_undefined:
+    case token_type::kw_unknown:
+    case token_type::kw_void:
       this->skip();
       switch (this->peek().type) {
       // <T,>() => {}                 // Generic arrow function.
@@ -3522,7 +3579,8 @@ expression* parser::parse_typescript_generic_arrow_expression(
 
   buffering_visitor return_type_visits(&this->type_expression_memory_);
   if (this->peek().type == token_type::colon) {
-    this->parse_and_visit_typescript_colon_type_expression(return_type_visits);
+    this->parse_and_visit_typescript_colon_type_expression_or_type_predicate(
+        return_type_visits);
   }
 
   QLJS_PARSER_UNIMPLEMENTED_IF_NOT_TOKEN(token_type::equal_greater);
@@ -3592,7 +3650,7 @@ expression* parser::parse_typescript_angle_type_assertion_expression(
           ast->kind() == expression_kind::paren_empty) {
         buffering_visitor return_type_visits(&this->type_expression_memory_);
         if (this->peek().type == token_type::colon) {
-          this->parse_and_visit_typescript_colon_type_expression(
+          this->parse_and_visit_typescript_colon_type_expression_or_type_predicate(
               return_type_visits);
         }
         if (this->peek().type == token_type::equal_greater) {

@@ -919,6 +919,16 @@ msgstr "pilen är här"
 
 #: src/quick-lint-js/fe/diagnostic-types.h
 #, fuzzy
+msgid "newline is not allowed between 'async' and 'function'"
+msgstr "nyrad är inte tillåten mellan 'async' och pilfunktions parameter lista"
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+#, fuzzy
+msgid "'function' is here"
+msgstr "funktionkallelse startar här"
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+#, fuzzy
 msgid "newline is not allowed after 'abstract'"
 msgstr "extra ',' är inte tillåtet mellan funktionkallelses argument"
 
@@ -964,6 +974,16 @@ msgstr "oktal nummerlitteräl kan inte ha decimaler"
 #, fuzzy
 msgid "use ':' instead of '=' in object literals"
 msgstr "ogiltigt låneuttryck i objektliteral"
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+#, fuzzy
+msgid "TypeScript optional parameter requires parentheses"
+msgstr "TypeScripts 'enum' är inte ännu implementerad av quick-lint-js"
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+#, fuzzy
+msgid "TypeScript optional parameter with type annotation requires parentheses"
+msgstr "TypeScripts 'enum' är inte ännu implementerad av quick-lint-js"
 
 #: src/quick-lint-js/fe/diagnostic-types.h
 msgid "optional parameter cannot have both '?' and initializer; remove '?'"
@@ -1179,6 +1199,19 @@ msgid "index signatures require a value type"
 msgstr "indexering kräver ett uttryck"
 
 #: src/quick-lint-js/fe/diagnostic-types.h
+msgid "function overload signature must be named '{1}'"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+#, fuzzy
+msgid "overloaded function '{0}' declared here"
+msgstr "funktion deklarerad här"
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "function overload signature cannot have generator '*'"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
 msgid "generic arrow function needs ',' here in TSX"
 msgstr ""
 
@@ -1261,6 +1294,18 @@ msgstr "TypeScripts 'enum' är inte ännu implementerad av quick-lint-js"
 
 #: src/quick-lint-js/fe/diagnostic-types.h
 msgid "methods cannot be readonly"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "'readonly' must be followed by an array type or a tuple type"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "readonly array is missing '[]'"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "'readonly' only works with array types and tuple types"
 msgstr ""
 
 #: src/quick-lint-js/fe/diagnostic-types.h
@@ -1491,6 +1536,10 @@ msgstr "omatchad parantes"
 #: src/quick-lint-js/fe/diagnostic-types.h
 msgid "unmatched '}'"
 msgstr "omatchad '}'"
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "{0} is not the name of a parameter"
+msgstr ""
 
 #: src/quick-lint-js/fe/diagnostic-types.h
 #, fuzzy

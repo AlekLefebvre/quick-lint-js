@@ -32,13 +32,16 @@ const translation_table translation_data = {
         {18, 13, 53, 51, 16},         //
         {0, 0, 0, 0, 33},             //
         {30, 39, 0, 0, 38},           //
-        {13, 16, 0, 0, 11},           //
+        {0, 0, 0, 0, 11},             //
+        {13, 16, 0, 0, 19},           //
         {13, 24, 37, 31, 15},         //
         {0, 0, 0, 0, 48},             //
         {0, 0, 0, 0, 39},             //
         {0, 0, 0, 0, 41},             //
         {0, 0, 0, 0, 38},             //
         {0, 0, 0, 0, 66},             //
+        {0, 0, 0, 0, 61},             //
+        {0, 0, 0, 0, 55},             //
         {0, 0, 0, 0, 35},             //
         {0, 0, 0, 0, 48},             //
         {0, 0, 0, 0, 48},             //
@@ -75,6 +78,8 @@ const translation_table translation_data = {
         {0, 0, 0, 0, 52},             //
         {0, 0, 0, 0, 59},             //
         {0, 0, 0, 0, 61},             //
+        {0, 0, 0, 0, 51},             //
+        {0, 0, 0, 0, 72},             //
         {0, 0, 0, 0, 61},             //
         {0, 0, 0, 0, 66},             //
         {0, 0, 0, 0, 48},             //
@@ -184,7 +189,9 @@ const translation_table translation_data = {
         {27, 25, 64, 59, 25},         //
         {29, 17, 31, 0, 27},          //
         {68, 28, 70, 30, 55},         //
-        {30, 18, 0, 0, 23},           //
+        {0, 0, 0, 0, 23},             //
+        {0, 0, 0, 0, 54},             //
+        {30, 18, 0, 0, 48},           //
         {29, 18, 24, 0, 21},          //
         {44, 18, 49, 0, 39},          //
         {84, 28, 66, 25, 54},         //
@@ -288,7 +295,8 @@ const translation_table translation_data = {
         {0, 0, 0, 0, 40},             //
         {0, 0, 0, 0, 41},             //
         {0, 0, 0, 0, 41},             //
-        {52, 31, 25, 21, 36},         //
+        {0, 0, 0, 0, 36},             //
+        {52, 31, 25, 21, 54},         //
         {0, 0, 0, 0, 73},             //
         {63, 34, 103, 73, 50},        //
         {69, 23, 79, 51, 48},         //
@@ -299,8 +307,10 @@ const translation_table translation_data = {
         {0, 0, 0, 0, 35},             //
         {35, 37, 0, 0, 62},           //
         {0, 0, 0, 0, 25},             //
-        {32, 13, 50, 38, 68},         //
-        {66, 33, 76, 58, 54},         //
+        {0, 0, 0, 0, 68},             //
+        {32, 13, 50, 38, 40},         //
+        {0, 0, 0, 0, 54},             //
+        {66, 33, 76, 58, 31},         //
         {40, 29, 35, 33, 33},         //
         {0, 0, 0, 0, 31},             //
         {38, 61, 32, 31, 18},         //
@@ -371,7 +381,8 @@ const translation_table translation_data = {
         {0, 0, 0, 0, 51},             //
         {0, 0, 0, 0, 36},             //
         {0, 0, 0, 0, 48},             //
-        {47, 55, 72, 48, 42},         //
+        {0, 0, 0, 0, 42},             //
+        {47, 55, 72, 48, 35},         //
         {0, 0, 0, 0, 21},             //
         {0, 15, 0, 0, 53},            //
     }}),
@@ -1295,12 +1306,15 @@ const translation_table translation_data = {
         u8"'else' has no corresponding 'if'\0"
         u8"'extends' must be before 'implements'\0"
         u8"'for' loop\0"
+        u8"'function' is here\0"
         u8"'if' statement\0"
         u8"'in' disallowed in C-style for loop initializer\0"
         u8"'private' is not allowed in JavaScript\0"
         u8"'protected' is not allowed in JavaScript\0"
         u8"'public' is not allowed in JavaScript\0"
         u8"'readonly static' is not allowed; write 'static readonly' instead\0"
+        u8"'readonly' must be followed by an array type or a tuple type\0"
+        u8"'readonly' only works with array types and tuple types\0"
         u8"'this' must be the first parameter\0"
         u8"'this' parameter not allowed when destructuring\0"
         u8"'this' parameters are not allowed in JavaScript\0"
@@ -1337,6 +1351,8 @@ const translation_table translation_data = {
         u8"TypeScript namespaces are not allowed in JavaScript\0"
         u8"TypeScript non-null assertion is not allowed on parameters\0"
         u8"TypeScript non-null assertions are not allowed in JavaScript\0"
+        u8"TypeScript optional parameter requires parentheses\0"
+        u8"TypeScript optional parameter with type annotation requires parentheses\0"
         u8"TypeScript optional parameters are not allowed in JavaScript\0"
         u8"TypeScript optional properties are not allowed in JavaScript code\0"
         u8"TypeScript type annotation requires parentheses\0"
@@ -1447,6 +1463,8 @@ const translation_table translation_data = {
         u8"function call started here\0"
         u8"function called before declaration in block scope: {0}\0"
         u8"function declared here\0"
+        u8"function overload signature cannot have generator '*'\0"
+        u8"function overload signature must be named '{1}'\0"
         u8"function starts here\0"
         u8"functions/methods should not have '=>'\0"
         u8"generator function '*' belongs after keyword function\0"
@@ -1551,6 +1569,7 @@ const translation_table translation_data = {
         u8"newline is not allowed after 'interface'\0"
         u8"newline is not allowed after 'namespace'\0"
         u8"newline is not allowed after 'type'\0"
+        u8"newline is not allowed between 'async' and 'function'\0"
         u8"newline is not allowed between 'async' and arrow function parameter list\0"
         u8"newline is not allowed between field name and '!'\0"
         u8"number literal contains consecutive underscores\0"
@@ -1562,7 +1581,9 @@ const translation_table translation_data = {
         u8"only one comma is allowed between or after generic parameters\0"
         u8"opening '<{1}>' tag here\0"
         u8"optional parameter cannot have both '?' and initializer; remove '?'\0"
+        u8"overloaded function '{0}' declared here\0"
         u8"private properties are not allowed in object literals\0"
+        u8"readonly array is missing '[]'\0"
         u8"redeclaration of global variable\0"
         u8"redeclaration of variable: {0}\0"
         u8"redundant 'await'\0"
@@ -1634,6 +1655,7 @@ const translation_table translation_data = {
         u8"write 'const' instead of '{0}' here\0"
         u8"write the type assertion with 'as' here instead\0"
         u8"{0} classes are not allowed in JavaScript\0"
+        u8"{0} is not the name of a parameter\0"
         u8"{0} with no bindings\0"
         u8"{1:headlinese} value must be a compile-time constant\0"
         u8"~~~ invalid string, do not use outside benchmark ~~~",
