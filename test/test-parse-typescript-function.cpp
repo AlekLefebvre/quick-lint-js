@@ -470,6 +470,7 @@ TEST_F(test_parse_typescript_function, optional_parameter) {
                                       "visit_variable_type_use",  // ReturnType
                                       "visit_exit_function_scope"));
   }
+
 }
 
 TEST_F(test_parse_typescript_function,
