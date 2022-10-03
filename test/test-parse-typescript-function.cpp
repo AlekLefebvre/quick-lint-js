@@ -535,6 +535,479 @@ TEST_F(test_parse_typescript_function,
             question, strlen(u8"function f({}"), u8"?")));
   }
 }
+
+TEST_F(test_parse_typescript_function,
+       optional_arrow_parameter_must_have_parentheses) {
+  {
+    test_parser p(u8"param? => {}"_sv, typescript_options, capture_diags);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(p.visits, ElementsAre("visit_enter_function_scope",  //
+                                      "visit_variable_declaration",  // param
+                                      "visit_enter_function_scope_body",  // {
+                                      "visit_exit_function_scope"));      // }
+    EXPECT_THAT(p.errors,
+                ElementsAre(DIAG_TYPE_2_OFFSETS(
+                    p.code,
+                    diag_optional_arrow_parameter_requires_parentheses,  //
+                    parameter_and_question, 0, u8"param?",               //
+                    question, strlen(u8"param"), u8"?")));
+  }
+
+  {
+    test_parser p(u8"async param? => {}"_sv, typescript_options, capture_diags);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(p.visits, ElementsAre("visit_enter_function_scope",  //
+                                      "visit_variable_declaration",  // param
+                                      "visit_enter_function_scope_body",  // {
+                                      "visit_exit_function_scope"));      // }
+    EXPECT_THAT(p.errors,
+                ElementsAre(DIAG_TYPE_2_OFFSETS(
+                    p.code,
+                    diag_optional_arrow_parameter_requires_parentheses,      //
+                    parameter_and_question, strlen(u8"async "), u8"param?",  //
+                    question, strlen(u8"async param"), u8"?")));
+  }
+}
+
+TEST_F(test_parse_typescript_function,
+       optional_arrow_parameter_with_type_must_have_parentheses) {
+  {
+    // TODO(strager): Don't require surrounding parentheses for this diagnostic.
+    test_parser p(u8"(param?: Type => {})"_sv, typescript_options,
+                  capture_diags);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(p.visits, ElementsAre("visit_enter_function_scope",  //
+                                      "visit_variable_type_use",     // Type
+                                      "visit_variable_declaration",  // param
+                                      "visit_enter_function_scope_body",  // {
+                                      "visit_exit_function_scope"));      // }
+    EXPECT_THAT(
+        p.errors,
+        ElementsAre(DIAG_TYPE_3_OFFSETS(
+            p.code,
+            diag_optional_arrow_parameter_with_type_annotation_requires_parentheses,  //
+            parameter_and_annotation, strlen(u8"("), u8"param?: Type",  //
+            question, strlen(u8"(param"), u8"?",                        //
+            type_colon, strlen(u8"(param?"), u8":")));
+  }
+
+  {
+    test_parser p(u8"async param?: Type => {}"_sv, typescript_options,
+                  capture_diags);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(p.visits, ElementsAre("visit_enter_function_scope",  //
+                                      "visit_variable_type_use",     // Type
+                                      "visit_variable_declaration",  // param
+                                      "visit_enter_function_scope_body",  // {
+                                      "visit_exit_function_scope"));      // }
+    EXPECT_THAT(
+        p.errors,
+        ElementsAre(DIAG_TYPE_3_OFFSETS(
+            p.code,
+            diag_optional_arrow_parameter_with_type_annotation_requires_parentheses,  //
+            parameter_and_annotation, strlen(u8"async "), u8"param?: Type",  //
+            question, strlen(u8"async param"), u8"?",                        //
+            type_colon, strlen(u8"async param?"), u8":")));
+  }
+}
+
+TEST_F(test_parse_typescript_function, type_predicate) {
+  {
+    test_parser p(u8"function f(param): param is SomeType {}"_sv,
+                  typescript_options);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(p.visits,
+                ElementsAre("visit_variable_declaration",         // f
+                            "visit_enter_function_scope",         //
+                            "visit_variable_declaration",         // param
+                            "visit_variable_type_predicate_use",  // param
+                            "visit_variable_type_use",            // SomeType
+                            "visit_enter_function_scope_body",    // {
+                            "visit_exit_function_scope"));        // }
+  }
+
+  {
+    test_parser p(u8"(param): param is SomeType => {}"_sv, typescript_options);
+    p.parse_and_visit_expression();
+    EXPECT_THAT(p.visits,
+                ElementsAre("visit_enter_function_scope",         //
+                            "visit_variable_declaration",         // param
+                            "visit_variable_type_predicate_use",  // param
+                            "visit_variable_type_use",            // SomeType
+                            "visit_enter_function_scope_body",    // {
+                            "visit_exit_function_scope"));        // }
+  }
+
+  {
+    test_parser p(u8"<T>(param): param is SomeType => {}"_sv,
+                  typescript_options);
+    p.parse_and_visit_expression();
+    EXPECT_THAT(p.visits,
+                ElementsAre("visit_enter_function_scope",         //
+                            "visit_variable_declaration",         // T
+                            "visit_variable_declaration",         // param
+                            "visit_variable_type_predicate_use",  // param
+                            "visit_variable_type_use",            // SomeType
+                            "visit_enter_function_scope_body",    // {
+                            "visit_exit_function_scope"));        // }
+  }
+
+  {
+    test_parser p(u8"<T, U>(param): param is SomeType => {}"_sv,
+                  typescript_options);
+    p.parse_and_visit_expression();
+    EXPECT_THAT(p.visits,
+                ElementsAre("visit_enter_function_scope",         //
+                            "visit_variable_declaration",         // T
+                            "visit_variable_declaration",         // U
+                            "visit_variable_declaration",         // param
+                            "visit_variable_type_predicate_use",  // param
+                            "visit_variable_type_use",            // SomeType
+                            "visit_enter_function_scope_body",    // {
+                            "visit_exit_function_scope"));        // }
+  }
+}
+
+TEST_F(test_parse_typescript_function, type_predicate_on_async_function) {
+  // TODO(#856): Report a diagnostic for these cases.
+
+  {
+    test_parser p(u8"async function f(param): param is SomeType {}"_sv,
+                  typescript_options);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(p.variable_uses, ElementsAre(u8"param", u8"SomeType"));
+  }
+
+  {
+    test_parser p(u8"async <T>(param): param is SomeType => {}"_sv,
+                  typescript_options);
+    p.parse_and_visit_expression();
+    EXPECT_THAT(p.variable_uses, ElementsAre(u8"param", u8"SomeType"));
+  }
+}
+
+TEST_F(test_parse_typescript_function, type_predicate_on_generator_function) {
+  // TODO(#856): Report a diagnostic for these cases.
+
+  {
+    test_parser p(u8"function *f(param): param is SomeType {}"_sv,
+                  typescript_options);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(p.variable_uses, ElementsAre(u8"param", u8"SomeType"));
+  }
+}
+
+TEST_F(test_parse_typescript_function,
+       type_predicate_parameter_name_can_be_contextual_keyword) {
+  for (string8 parameter_name :
+       keywords - disallowed_binding_identifier_keywords) {
+    string8 code = u8"function f(" + parameter_name + u8"): " + parameter_name +
+                   u8" is SomeType {}";
+    SCOPED_TRACE(out_string8(code));
+    test_parser p(code, typescript_options);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(
+        p.visits,
+        ElementsAre("visit_variable_declaration",         // f
+                    "visit_enter_function_scope",         //
+                    "visit_variable_declaration",         // (parameter_name)
+                    "visit_variable_type_predicate_use",  // (parameter_name)
+                    "visit_variable_type_use",            // SomeType
+                    "visit_enter_function_scope_body",    // {
+                    "visit_exit_function_scope"));        // }
+  }
+}
+
+TEST_F(test_parse_typescript_function, function_overload_signatures) {
+  {
+    test_parser p(
+        u8"function f();\n"_sv
+        u8"function f() {}"_sv,
+        typescript_options);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(p.visits,
+                ElementsAre("visit_variable_declaration",       // f
+                            "visit_enter_function_scope",       //
+                            "visit_exit_function_scope",        //
+                            "visit_enter_function_scope",       //
+                            "visit_enter_function_scope_body",  // {
+                            "visit_exit_function_scope"));      // }
+    EXPECT_THAT(p.variable_declarations, ElementsAre(function_decl(u8"f")));
+  }
+
+  {
+    // ASI
+    test_parser p(
+        u8"function f()\n"_sv
+        u8"function f() {}"_sv,
+        typescript_options);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(p.visits,
+                ElementsAre("visit_variable_declaration",       // f
+                            "visit_enter_function_scope",       //
+                            "visit_exit_function_scope",        //
+                            "visit_enter_function_scope",       //
+                            "visit_enter_function_scope_body",  // {
+                            "visit_exit_function_scope"));      // }
+    EXPECT_THAT(p.variable_declarations, ElementsAre(function_decl(u8"f")));
+  }
+
+  {
+    test_parser p(
+        u8"function f();\n"_sv
+        u8"function \\u{66}() {}"_sv,
+        typescript_options);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(p.variable_declarations, ElementsAre(function_decl(u8"f")));
+  }
+
+  for (string8 function_name : contextual_keywords) {
+    string8 code = u8"function " + function_name +
+                   u8"();\n"
+                   u8"function " +
+                   function_name + u8"() {}";
+    SCOPED_TRACE(out_string8(code));
+    test_parser p(code, typescript_options);
+    p.parse_and_visit_module();
+    EXPECT_THAT(p.variable_declarations,
+                ElementsAre(function_decl(function_name)));
+  }
+
+  {
+    test_parser p(
+        u8"function \\u{66}();\n"_sv
+        u8"function f() {}"_sv,
+        typescript_options);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(p.variable_declarations, ElementsAre(function_decl(u8"f")));
+  }
+
+  {
+    test_parser p(
+        u8"function f();\n"_sv
+        u8"async function f() { await(myPromise); }"_sv,
+        typescript_options);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(p.variable_uses, ElementsAre(u8"myPromise"));
+    EXPECT_THAT(p.variable_declarations, ElementsAre(function_decl(u8"f")));
+  }
+
+  {
+    test_parser p(
+        u8"async function f();\n"_sv
+        u8"function f() { await(myPromise); }"_sv,
+        typescript_options);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(p.variable_uses, ElementsAre(u8"await", u8"myPromise"))
+        << "'async' keyword should not apply to implementation";
+    EXPECT_THAT(p.variable_declarations, ElementsAre(function_decl(u8"f")));
+  }
+
+  {
+    test_parser p(
+        u8"function f();\n"_sv
+        u8"function *f() { yield(myValue); }"_sv,
+        typescript_options);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(p.variable_uses, ElementsAre(u8"myValue"))
+        << "'yield' should be a keyword in the implementation";
+    EXPECT_THAT(p.variable_declarations, ElementsAre(function_decl(u8"f")));
+  }
+
+  {
+    test_parser p(
+        u8"function f();\n"_sv
+        u8"async function *f() { yield(myValue); await(myPromise); }"_sv,
+        typescript_options);
+    p.parse_and_visit_statement();
+    EXPECT_THAT(p.variable_uses, ElementsAre(u8"myValue", u8"myPromise"))
+        << "both 'await' and 'yield' should be keywords in the implementation";
+    EXPECT_THAT(p.variable_declarations, ElementsAre(function_decl(u8"f")));
+  }
+}
+
+TEST_F(test_parse_typescript_function,
+       function_overload_signature_with_wrong_name) {
+  {
+    test_parser p(
+        u8"function f();\n"_sv
+        u8"function g() {}"_sv,
+        typescript_options, capture_diags);
+    p.parse_and_visit_module();
+    EXPECT_THAT(p.visits,
+                ElementsAre("visit_variable_declaration",       // f
+                            "visit_enter_function_scope",       //
+                            "visit_exit_function_scope",        //
+                            "visit_variable_declaration",       // g
+                            "visit_enter_function_scope",       //
+                            "visit_enter_function_scope_body",  // {
+                            "visit_exit_function_scope",        // }
+                            "visit_end_of_module"));
+    EXPECT_THAT(p.variable_declarations,
+                ElementsAre(function_decl(u8"f"), function_decl(u8"g")));
+    EXPECT_THAT(
+        p.errors,
+        ElementsAre(DIAG_TYPE_3_OFFSETS(
+            p.code,
+            diag_typescript_function_overload_signature_must_have_same_name,
+            first_name, strlen(u8"function "), u8"f",                  //
+            second_name, strlen(u8"function f();\nfunction "), u8"g",  //
+            first_semicolon, strlen(u8"function f()"), u8";")));
+  }
+
+  {
+    test_parser p(
+        u8"function f()\n"_sv  // ASI
+        u8"function g() {}"_sv,
+        typescript_options, capture_diags);
+    p.parse_and_visit_module();
+    EXPECT_THAT(p.visits,
+                ElementsAre("visit_variable_declaration",       // f
+                            "visit_enter_function_scope",       //
+                            "visit_exit_function_scope",        //
+                            "visit_variable_declaration",       // g
+                            "visit_enter_function_scope",       //
+                            "visit_enter_function_scope_body",  // {
+                            "visit_exit_function_scope",        // }
+                            "visit_end_of_module"));
+    EXPECT_THAT(p.variable_declarations,
+                ElementsAre(function_decl(u8"f"), function_decl(u8"g")));
+    EXPECT_THAT(p.errors, ElementsAre(DIAG_TYPE_OFFSETS(
+                              p.code, diag_missing_function_body, expected_body,
+                              strlen(u8"function f()"), u8"")))
+        << "missing function body is more likely, so don't report "
+           "diag_typescript_function_overload_signature_must_have_same_name";
+  }
+
+  {
+    test_parser p(
+        u8"function f()\n"_sv  // ASI
+        u8"async\n"_sv
+        u8"function g() { await(myPromise); }"_sv,
+        typescript_options, capture_diags);
+    p.parse_and_visit_module();
+    EXPECT_THAT(p.visits,
+                ElementsAre("visit_variable_declaration",       // f
+                            "visit_enter_function_scope",       //
+                            "visit_exit_function_scope",        //
+                            "visit_variable_use",               // async
+                            "visit_variable_declaration",       // g
+                            "visit_enter_function_scope",       //
+                            "visit_enter_function_scope_body",  // {
+                            "visit_variable_use",               // await
+                            "visit_variable_use",               // myPromise
+                            "visit_exit_function_scope",        // }
+                            "visit_end_of_module"));
+    EXPECT_THAT(p.variable_declarations,
+                ElementsAre(function_decl(u8"f"), function_decl(u8"g")));
+    EXPECT_THAT(p.variable_uses,
+                ElementsAre(u8"async", u8"await", u8"myPromise"))
+        << "'async' should be a variable reference, not a keyword";
+    EXPECT_THAT(p.errors, ElementsAre(DIAG_TYPE_OFFSETS(
+                              p.code, diag_missing_function_body, expected_body,
+                              strlen(u8"function f()"), u8"")))
+        << "missing function body is more likely, so don't report "
+           "diag_typescript_function_overload_signature_must_have_same_name";
+  }
+}
+
+TEST_F(test_parse_typescript_function,
+       function_overload_signature_with_newline_after_async) {
+  {
+    // Normally, we would treat 'async' as a variable name here. However, we
+    // know that there's a syntax error anyway (missing function body), so
+    // diag_newline_not_allowed_between_async_and_function_keyword seems more
+    // helpful.
+    test_parser p(
+        u8"function f()\n"_sv
+        u8"async\n"_sv
+        u8"function f() { await(myPromise); }"_sv,
+        typescript_options, capture_diags);
+    p.parse_and_visit_module();
+    EXPECT_THAT(p.visits,
+                ElementsAre("visit_variable_declaration",       // f
+                            "visit_enter_function_scope",       //
+                            "visit_exit_function_scope",        //
+                            "visit_enter_function_scope",       //
+                            "visit_enter_function_scope_body",  // {
+                            "visit_variable_use",               // myPromise
+                            "visit_exit_function_scope",        // }
+                            "visit_end_of_module"));
+    EXPECT_THAT(p.variable_uses, ElementsAre(u8"myPromise"));
+    EXPECT_THAT(
+        p.errors,
+        ElementsAre(DIAG_TYPE_2_OFFSETS(
+            p.code, diag_newline_not_allowed_between_async_and_function_keyword,
+            async_keyword, strlen(u8"function f()\n"), u8"async",  //
+            function_keyword, strlen(u8"function f()\nasync\n"),
+            u8"function")));
+  }
+}
+
+TEST_F(test_parse_typescript_function,
+       function_overload_signature_declaration_cannot_have_generator_star) {
+  {
+    test_parser p(
+        u8"function *f();"_sv
+        u8"function *f() { yield(myValue); }"_sv,
+        typescript_options, capture_diags);
+    p.parse_and_visit_module();
+    EXPECT_THAT(p.visits,
+                ElementsAre("visit_variable_declaration",       // f
+                            "visit_enter_function_scope",       //
+                            "visit_exit_function_scope",        //
+                            "visit_enter_function_scope",       //
+                            "visit_enter_function_scope_body",  // {
+                            "visit_variable_use",               // myValue
+                            "visit_exit_function_scope",        // }
+                            "visit_end_of_module"));
+    EXPECT_THAT(p.variable_uses, ElementsAre(u8"myValue"));
+    EXPECT_THAT(
+        p.errors,
+        ElementsAre(DIAG_TYPE_OFFSETS(
+            p.code,
+            diag_typescript_function_overload_signature_must_not_have_generator_star,
+            generator_star, strlen(u8"function "), u8"*")));
+  }
+
+  {
+    test_parser p(
+        u8"function *f(a);"_sv
+        u8"function *f(a, b);"_sv
+        u8"function *f(...args) { yield(myValue); }"_sv,
+        typescript_options, capture_diags);
+    p.parse_and_visit_module();
+    EXPECT_THAT(p.variable_uses, ElementsAre(u8"myValue"));
+    EXPECT_THAT(
+        p.errors,
+        ElementsAre(
+            DIAG_TYPE_OFFSETS(
+                p.code,
+                diag_typescript_function_overload_signature_must_not_have_generator_star,
+                generator_star, strlen(u8"function "), u8"*"),
+            DIAG_TYPE_OFFSETS(
+                p.code,
+                diag_typescript_function_overload_signature_must_not_have_generator_star,
+                generator_star, strlen(u8"function *f(a);function "), u8"*")));
+  }
+
+  {
+    test_parser p(
+        u8"function *f(a);"_sv
+        u8"function f(a, b);"_sv
+        u8"function f(...args) { yield(myValue); }"_sv,
+        typescript_options, capture_diags);
+    p.parse_and_visit_module();
+    EXPECT_THAT(p.variable_uses, ElementsAre(u8"yield", u8"myValue"))
+        << "'yield' should not be a keyword in the implementation";
+    EXPECT_THAT(
+        p.errors,
+        ElementsAre(DIAG_TYPE_OFFSETS(
+            p.code,
+            diag_typescript_function_overload_signature_must_not_have_generator_star,
+            generator_star, strlen(u8"function "), u8"*")));
+  }
+}
 }
 }
 

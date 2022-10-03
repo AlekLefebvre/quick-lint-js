@@ -920,6 +920,16 @@ msgstr "move this up"
 
 #: src/quick-lint-js/fe/diagnostic-types.h
 #, fuzzy
+msgid "newline is not allowed between 'async' and 'function'"
+msgstr "put this on a single line, please"
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+#, fuzzy
+msgid "'function' is here"
+msgstr "IIFE started here"
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+#, fuzzy
 msgid "newline is not allowed after 'abstract'"
 msgstr "that's way too many commas 🚮"
 
@@ -965,6 +975,16 @@ msgstr "but you said '0o'..."
 #, fuzzy
 msgid "use ':' instead of '=' in object literals"
 msgstr "what's this literal supposed to mean in an object?"
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+#, fuzzy
+msgid "TypeScript optional parameter requires parentheses"
+msgstr "TypeScript's 'interface' feature is not allowed in JavaScript code"
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+#, fuzzy
+msgid "TypeScript optional parameter with type annotation requires parentheses"
+msgstr "TypeScript's 'interface' feature is not allowed in JavaScript code"
 
 #: src/quick-lint-js/fe/diagnostic-types.h
 msgid "optional parameter cannot have both '?' and initializer; remove '?'"
@@ -1179,6 +1199,19 @@ msgid "index signatures require a value type"
 msgstr "indexing requires an expression"
 
 #: src/quick-lint-js/fe/diagnostic-types.h
+msgid "function overload signature must be named '{1}'"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+#, fuzzy
+msgid "overloaded function '{0}' declared here"
+msgstr "Safari hates this"
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "function overload signature cannot have generator '*'"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
 msgid "generic arrow function needs ',' here in TSX"
 msgstr ""
 
@@ -1260,6 +1293,18 @@ msgstr "TypeScript's 'interface' feature is not allowed in JavaScript code"
 
 #: src/quick-lint-js/fe/diagnostic-types.h
 msgid "methods cannot be readonly"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "'readonly' must be followed by an array type or a tuple type"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "readonly array is missing '[]'"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "'readonly' only works with array types and tuple types"
 msgstr ""
 
 #: src/quick-lint-js/fe/diagnostic-types.h
@@ -1483,6 +1528,10 @@ msgstr "I have some extra: ) ) ) ) ) ) ) ) ) ) )"
 #: src/quick-lint-js/fe/diagnostic-types.h
 msgid "unmatched '}'"
 msgstr "what are you trying to close here?"
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "{0} is not the name of a parameter"
+msgstr ""
 
 #: src/quick-lint-js/fe/diagnostic-types.h
 msgid "use of undeclared type: {0}"

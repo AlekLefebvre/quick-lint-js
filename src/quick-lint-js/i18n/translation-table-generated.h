@@ -20,8 +20,8 @@ namespace quick_lint_js {
 using namespace std::literals::string_view_literals;
 
 constexpr std::uint32_t translation_table_locale_count = 4;
-constexpr std::uint16_t translation_table_mapping_table_size = 364;
-constexpr std::size_t translation_table_string_table_size = 54315;
+constexpr std::uint16_t translation_table_mapping_table_size = 375;
+constexpr std::size_t translation_table_string_table_size = 54835;
 constexpr std::size_t translation_table_locale_table_size = 29;
 
 QLJS_CONSTEVAL std::uint16_t translation_table_const_look_up(
@@ -49,12 +49,15 @@ QLJS_CONSTEVAL std::uint16_t translation_table_const_look_up(
           "'else' has no corresponding 'if'"sv,
           "'extends' must be before 'implements'"sv,
           "'for' loop"sv,
+          "'function' is here"sv,
           "'if' statement"sv,
           "'in' disallowed in C-style for loop initializer"sv,
           "'private' is not allowed in JavaScript"sv,
           "'protected' is not allowed in JavaScript"sv,
           "'public' is not allowed in JavaScript"sv,
           "'readonly static' is not allowed; write 'static readonly' instead"sv,
+          "'readonly' must be followed by an array type or a tuple type"sv,
+          "'readonly' only works with array types and tuple types"sv,
           "'this' must be the first parameter"sv,
           "'this' parameter not allowed when destructuring"sv,
           "'this' parameters are not allowed in JavaScript"sv,
@@ -91,6 +94,8 @@ QLJS_CONSTEVAL std::uint16_t translation_table_const_look_up(
           "TypeScript namespaces are not allowed in JavaScript"sv,
           "TypeScript non-null assertion is not allowed on parameters"sv,
           "TypeScript non-null assertions are not allowed in JavaScript"sv,
+          "TypeScript optional parameter requires parentheses"sv,
+          "TypeScript optional parameter with type annotation requires parentheses"sv,
           "TypeScript optional parameters are not allowed in JavaScript"sv,
           "TypeScript optional properties are not allowed in JavaScript code"sv,
           "TypeScript type annotation requires parentheses"sv,
@@ -201,6 +206,8 @@ QLJS_CONSTEVAL std::uint16_t translation_table_const_look_up(
           "function call started here"sv,
           "function called before declaration in block scope: {0}"sv,
           "function declared here"sv,
+          "function overload signature cannot have generator '*'"sv,
+          "function overload signature must be named '{1}'"sv,
           "function starts here"sv,
           "functions/methods should not have '=>'"sv,
           "generator function '*' belongs after keyword function"sv,
@@ -305,6 +312,7 @@ QLJS_CONSTEVAL std::uint16_t translation_table_const_look_up(
           "newline is not allowed after 'interface'"sv,
           "newline is not allowed after 'namespace'"sv,
           "newline is not allowed after 'type'"sv,
+          "newline is not allowed between 'async' and 'function'"sv,
           "newline is not allowed between 'async' and arrow function parameter list"sv,
           "newline is not allowed between field name and '!'"sv,
           "number literal contains consecutive underscores"sv,
@@ -316,7 +324,9 @@ QLJS_CONSTEVAL std::uint16_t translation_table_const_look_up(
           "only one comma is allowed between or after generic parameters"sv,
           "opening '<{1}>' tag here"sv,
           "optional parameter cannot have both '?' and initializer; remove '?'"sv,
+          "overloaded function '{0}' declared here"sv,
           "private properties are not allowed in object literals"sv,
+          "readonly array is missing '[]'"sv,
           "redeclaration of global variable"sv,
           "redeclaration of variable: {0}"sv,
           "redundant 'await'"sv,
@@ -388,6 +398,7 @@ QLJS_CONSTEVAL std::uint16_t translation_table_const_look_up(
           "write 'const' instead of '{0}' here"sv,
           "write the type assertion with 'as' here instead"sv,
           "{0} classes are not allowed in JavaScript"sv,
+          "{0} is not the name of a parameter"sv,
           "{0} with no bindings"sv,
           "{1:headlinese} value must be a compile-time constant"sv,
           "~~~ invalid string, do not use outside benchmark ~~~"sv,

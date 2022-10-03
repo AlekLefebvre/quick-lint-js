@@ -24,8 +24,7 @@
 #include <utility>
 
 namespace quick_lint_js {
-void parser::parse_and_visit_typescript_colon_type_expression(
-    parse_visitor_base &v) {
+void parser::parse_typescript_colon_for_type() {
   QLJS_ASSERT(this->peek().type == token_type::colon);
   if (!this->options_.typescript && !this->in_typescript_only_construct_) {
     this->diag_reporter_->report(
@@ -34,6 +33,11 @@ void parser::parse_and_visit_typescript_colon_type_expression(
         });
   }
   this->skip();
+}
+
+void parser::parse_and_visit_typescript_colon_type_expression(
+    parse_visitor_base &v) {
+  this->parse_typescript_colon_for_type();
   this->parse_and_visit_typescript_type_expression(v);
 }
 
@@ -41,6 +45,10 @@ void parser::parse_and_visit_typescript_type_expression(parse_visitor_base &v) {
   depth_guard guard(this);
   typescript_only_construct_guard ts_guard =
       this->enter_typescript_only_construct();
+
+  bool is_array_type = false;
+  bool trailing_square_makes_array = true;
+  bool is_tuple_type = false;
 
   std::optional<source_code_span> leading_binary_operator;  // '|' or '&'
   if (this->peek().type == token_type::ampersand ||
@@ -51,12 +59,21 @@ void parser::parse_and_visit_typescript_type_expression(parse_visitor_base &v) {
     this->skip();
   }
 
+  std::optional<source_code_span> readonly_keyword;
+  if (this->peek().type == token_type::kw_readonly) {
+    // readonly Type[]
+    // readonly [Type, Type]
+    readonly_keyword = this->peek().span();
+    this->skip();
+  }
+
 again:
   switch (this->peek().type) {
   case token_type::complete_template:
   case token_type::kw_any:
   case token_type::kw_bigint:
   case token_type::kw_boolean:
+  case token_type::kw_false:
   case token_type::kw_never:
   case token_type::kw_null:
   case token_type::kw_number:
@@ -64,6 +81,7 @@ again:
   case token_type::kw_string:
   case token_type::kw_symbol:
   case token_type::kw_this:
+  case token_type::kw_true:
   case token_type::kw_undefined:
   case token_type::kw_unknown:
   case token_type::kw_void:
@@ -134,6 +152,7 @@ again:
   // unique.prop
   // unique symbol
   case token_type::kw_unique:
+    trailing_square_makes_array = false;
     this->skip();
     QLJS_PARSER_UNIMPLEMENTED_IF_NOT_TOKEN(token_type::kw_symbol);
     this->skip();
@@ -141,23 +160,31 @@ again:
 
   // [A, B, C]
   case token_type::left_square:
+    is_tuple_type = true;
     this->parse_and_visit_typescript_tuple_type_expression(v);
     break;
 
   // (typeexpr)
   // (param, param) => ReturnType
-  case token_type::left_paren:
-    this->parse_and_visit_typescript_arrow_or_paren_type_expression(v);
+  case token_type::left_paren: {
+    typescript_type_arrow_or_paren result =
+        this->parse_and_visit_typescript_arrow_or_paren_type_expression(v);
+    if (result == typescript_type_arrow_or_paren::arrow) {
+      trailing_square_makes_array = false;
+    }
     break;
+  }
 
   // new (param, param) => ReturnType
   case token_type::kw_new:
+    trailing_square_makes_array = false;
     this->skip();
     this->parse_and_visit_typescript_arrow_type_expression(v);
     break;
 
   // <T>(param, param) => ReturnType
   case token_type::less:
+    trailing_square_makes_array = false;
     this->parse_and_visit_typescript_arrow_type_expression(v);
     break;
 
@@ -313,6 +340,7 @@ again:
 
   // keyof Type
   case token_type::kw_keyof:
+    trailing_square_makes_array = false;
     this->skip();
     this->parse_and_visit_typescript_type_expression(v);
     break;
@@ -328,16 +356,35 @@ again:
     break;
   }
 
+  bool have_trailing_square_bracket = false;
   while (this->peek().type == token_type::left_square) {
     // typeexpr[]
     // typeexpr[Key]
+    have_trailing_square_bracket = true;
     this->skip();
     if (this->peek().type == token_type::right_square) {
+      is_array_type = true;
       this->skip();
     } else {
       this->parse_and_visit_typescript_type_expression(v);
       QLJS_PARSER_UNIMPLEMENTED_IF_NOT_TOKEN(token_type::right_square);
       this->skip();
+    }
+  }
+  if (readonly_keyword.has_value() && !(is_array_type || is_tuple_type)) {
+    if (have_trailing_square_bracket || !trailing_square_makes_array) {
+      // readonly T[K]  // Invalid.
+      this->diag_reporter_->report(
+          diag_typescript_readonly_in_type_needs_array_or_tuple_type{
+              .readonly_keyword = *readonly_keyword,
+          });
+    } else {
+      // readonly T  // Invalid.
+      this->diag_reporter_->report(diag_typescript_readonly_type_needs_array{
+          .expected_array_brackets =
+              source_code_span::unit(this->lexer_.end_of_previous_token()),
+          .readonly_keyword = *readonly_keyword,
+      });
     }
   }
 
@@ -358,6 +405,47 @@ again:
     this->parse_and_visit_typescript_type_expression(v);
     QLJS_PARSER_UNIMPLEMENTED_IF_NOT_TOKEN(token_type::colon);
     this->skip();
+    this->parse_and_visit_typescript_type_expression(v);
+  }
+}
+
+void parser::parse_and_visit_typescript_colon_type_expression_or_type_predicate(
+    parse_visitor_base &v) {
+  this->parse_typescript_colon_for_type();
+  this->parse_and_visit_typescript_type_expression_or_type_predicate(v);
+}
+
+void parser::parse_and_visit_typescript_type_expression_or_type_predicate(
+    parse_visitor_base &v) {
+  switch (this->peek().type) {
+  // param is Type
+  // Type
+  QLJS_CASE_CONTEXTUAL_KEYWORD:
+  QLJS_CASE_STRICT_ONLY_RESERVED_KEYWORD:
+  case token_type::identifier:
+  case token_type::kw_await:
+  case token_type::kw_yield: {
+    identifier parameter_name = this->peek().identifier_name();
+    lexer_transaction transaction = this->lexer_.begin_transaction();
+    this->skip();
+    if (this->peek().type == token_type::kw_is) {
+      // param is Type
+      this->lexer_.commit_transaction(std::move(transaction));
+      this->skip();
+      v.visit_variable_type_predicate_use(parameter_name);
+      this->parse_and_visit_typescript_type_expression(v);
+    } else {
+      // Type
+      this->lexer_.roll_back_transaction(std::move(transaction));
+      this->parse_and_visit_typescript_type_expression(v);
+    }
+    break;
+  }
+
+  // {key: Value}
+  // typeof v
+  // () => ReturnType
+  default:
     this->parse_and_visit_typescript_type_expression(v);
   }
 }
@@ -395,7 +483,8 @@ void parser::
   this->parse_and_visit_typescript_type_expression(v);
 }
 
-void parser::parse_and_visit_typescript_arrow_or_paren_type_expression(
+parser::typescript_type_arrow_or_paren
+parser::parse_and_visit_typescript_arrow_or_paren_type_expression(
     parse_visitor_base &v) {
   QLJS_ASSERT(this->peek().type == token_type::left_paren);
   this->skip();
@@ -403,19 +492,26 @@ void parser::parse_and_visit_typescript_arrow_or_paren_type_expression(
   if (this->peek().type == token_type::right_paren) {
     // () => ReturnType
     this->parse_and_visit_typescript_arrow_type_expression_after_left_paren(v);
-    return;
+    return typescript_type_arrow_or_paren::arrow;
   }
 
   // TODO(strager): Performance of this code probably sucks. I suspect arrow
   // types are more common than parenthesized types, so we should assume arrow
   // and fall back to parenthesized.
 
+  typescript_type_arrow_or_paren result = typescript_type_arrow_or_paren::paren;
   this->try_parse(
       [&] {
-        buffering_visitor &params_visitor =
-            this->buffering_visitor_stack_.emplace(
-                boost::container::pmr::new_delete_resource());
-        this->parse_and_visit_typescript_type_expression(params_visitor);
+        stacked_buffering_visitor params_visitor =
+            this->buffering_visitor_stack_.push();
+        const char8 *old_begin = this->peek().begin;
+        this->parse_and_visit_typescript_type_expression(
+            params_visitor.visitor());
+        if (this->peek().begin == old_begin) {
+          // We didn't parse anything.
+          // (...params) => ReturnType
+          return false;
+        }
         switch (this->peek().type) {
         // (typeexpr)
         // (param) => ReturnType
@@ -427,7 +523,7 @@ void parser::parse_and_visit_typescript_arrow_or_paren_type_expression(
             return false;
           } else {
             // (typeexpr)
-            params_visitor.move_into(v);
+            params_visitor.visitor().move_into(v);
             return true;
           }
           break;
@@ -444,11 +540,14 @@ void parser::parse_and_visit_typescript_arrow_or_paren_type_expression(
           QLJS_PARSER_UNIMPLEMENTED();
           break;
         }
+        QLJS_UNREACHABLE();
       },
       [&] {
+        result = typescript_type_arrow_or_paren::arrow;
         this->parse_and_visit_typescript_arrow_type_expression_after_left_paren(
             v);
       });
+  return result;
 }
 
 void parser::parse_and_visit_typescript_object_type_expression(

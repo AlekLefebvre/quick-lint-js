@@ -47,6 +47,10 @@ TEST_F(test_parse_typescript_type, direct_type_reference_with_keyword_name) {
                // https://github.com/microsoft/TypeScript/issues/49724
                u8"keyof",
                u8"let",
+               // NOTE(strager): readonly is omitted on purpose because
+               // TypeScript complains about it, even though there is no
+               // ambiguity in this case.
+               u8"readonly",
                u8"static",
                // NOTE(strager): unique is omitted on purpose because of
                // ambiguities in the grammar.
@@ -212,15 +216,15 @@ TEST_F(test_parse_typescript_type, this_type) {
 }
 
 TEST_F(test_parse_typescript_type, literal_type) {
-  {
-    test_parser p(u8"42"_sv, typescript_options);
-    p.parse_and_visit_typescript_type_expression();
-    EXPECT_THAT(p.visits, IsEmpty());
-    EXPECT_THAT(p.variable_uses, IsEmpty());
-  }
-
-  {
-    test_parser p(u8"'hello'"_sv, typescript_options);
+  for (string8_view code : {
+           u8"42"_sv,
+           u8"'hello'"_sv,
+           u8"null"_sv,
+           u8"true"_sv,
+           u8"false"_sv,
+       }) {
+    SCOPED_TRACE(out_string8(code));
+    test_parser p(code, typescript_options);
     p.parse_and_visit_typescript_type_expression();
     EXPECT_THAT(p.visits, IsEmpty());
     EXPECT_THAT(p.variable_uses, IsEmpty());
@@ -295,6 +299,28 @@ TEST_F(test_parse_typescript_type, tuple_type) {
 
   {
     test_parser p(u8"[A, B, C, ]"_sv, typescript_options);
+    p.parse_and_visit_typescript_type_expression();
+    EXPECT_THAT(p.variable_uses, ElementsAre(u8"A", u8"B", u8"C"));
+  }
+}
+
+TEST_F(test_parse_typescript_type, readonly_tuple_type) {
+  {
+    test_parser p(u8"readonly []"_sv, typescript_options);
+    p.parse_and_visit_typescript_type_expression();
+    EXPECT_THAT(p.visits, IsEmpty());
+    EXPECT_THAT(p.variable_uses, IsEmpty());
+  }
+
+  {
+    test_parser p(u8"readonly [A]"_sv, typescript_options);
+    p.parse_and_visit_typescript_type_expression();
+    EXPECT_THAT(p.visits, ElementsAre("visit_variable_type_use"));  // A
+    EXPECT_THAT(p.variable_uses, ElementsAre(u8"A"));
+  }
+
+  {
+    test_parser p(u8"readonly [A, B, C]"_sv, typescript_options);
     p.parse_and_visit_typescript_type_expression();
     EXPECT_THAT(p.variable_uses, ElementsAre(u8"A", u8"B", u8"C"));
   }
@@ -847,6 +873,20 @@ TEST_F(test_parse_typescript_type, arrow_function) {
     EXPECT_THAT(p.variable_declarations,
                 ElementsAre(func_type_param_decl(u8"param")));
   }
+
+  {
+    test_parser p(u8"(...params: ParamsType) => ReturnType"_sv,
+                  typescript_options);
+    p.parse_and_visit_typescript_type_expression();
+    EXPECT_THAT(p.visits, ElementsAre("visit_enter_function_scope",  //
+                                      "visit_variable_type_use",  // ParamsType
+                                      "visit_variable_declaration",  // params
+                                      "visit_variable_type_use",  // ReturnType
+                                      "visit_exit_function_scope"));
+    EXPECT_THAT(p.variable_uses, ElementsAre(u8"ParamsType", u8"ReturnType"));
+    EXPECT_THAT(p.variable_declarations,
+                ElementsAre(func_type_param_decl(u8"params")));
+  }
 }
 
 TEST_F(test_parse_typescript_type, generic_arrow_function) {
@@ -919,6 +959,34 @@ TEST_F(test_parse_typescript_type, array) {
     test_parser p(u8"(((T)[])[])"_sv, typescript_options);
     p.parse_and_visit_typescript_type_expression();
     EXPECT_THAT(p.visits, ElementsAre("visit_variable_type_use"));  // T
+  }
+}
+
+TEST_F(test_parse_typescript_type, readonly_array) {
+  {
+    test_parser p(u8"readonly T[]"_sv, typescript_options);
+    p.parse_and_visit_typescript_type_expression();
+    EXPECT_THAT(p.visits, ElementsAre("visit_variable_type_use"));  // T
+    EXPECT_THAT(p.variable_uses, ElementsAre(u8"T"));
+  }
+
+  {
+    test_parser p(u8"readonly T[][][]"_sv, typescript_options);
+    p.parse_and_visit_typescript_type_expression();
+    EXPECT_THAT(p.visits, ElementsAre("visit_variable_type_use"));  // T
+    EXPECT_THAT(p.variable_uses, ElementsAre(u8"T"));
+  }
+
+  {
+    test_parser p(u8"(readonly ((T)[])[])"_sv, typescript_options);
+    p.parse_and_visit_typescript_type_expression();
+    EXPECT_THAT(p.visits, ElementsAre("visit_variable_type_use"));  // T
+  }
+
+  {
+    test_parser p(u8"readonly typeof v[]"_sv, typescript_options);
+    p.parse_and_visit_typescript_type_expression();
+    EXPECT_THAT(p.visits, ElementsAre("visit_variable_use"));  // v
   }
 }
 
@@ -1303,6 +1371,58 @@ TEST_F(test_parse_typescript_type, doesnt_warn_in_javascript_code) {
     test_parser p(u8"{ prop: MyType }"_sv, javascript_options);
     p.parse_and_visit_typescript_type_expression();
     EXPECT_THAT(p.visits, ElementsAre("visit_variable_type_use"));  // MyType
+  }
+}
+
+TEST_F(test_parse_typescript_type, readonly_requires_tuple_or_array_type) {
+  // In these cases, we recommend adding '[]' to the end of the type.
+  for (string8_view code : {
+           u8"readonly Type"_sv,
+           u8"readonly typeof Type"_sv,
+           u8"readonly ns.Type<T>"_sv,
+           u8"readonly 42"_sv,
+           u8"readonly 'hello'"_sv,
+           u8"readonly ('hello' | 'world')"_sv,
+           u8"readonly `hello${world}`"_sv,
+           u8"readonly {key: Value}"_sv,
+
+           // TODO(strager): We should recommend removing the parentheses
+           // instead.
+           u8"readonly (T[])"_sv,
+       }) {
+    SCOPED_TRACE(out_string8(code));
+    test_parser p(code, typescript_options, capture_diags);
+    p.parse_and_visit_typescript_type_expression();
+    EXPECT_THAT(p.errors, ElementsAre(DIAG_TYPE_2_OFFSETS(
+                              p.code, diag_typescript_readonly_type_needs_array,
+                              expected_array_brackets, code.size(), u8"",  //
+                              readonly_keyword, 0, u8"readonly")));
+  }
+
+  // In these cases, we don't recommend adding '[]' to the end of the type
+  // (either because that wouldn't fix the error or they probably didn't intend
+  // to make an array type).
+  for (string8_view code : {
+           // Array type probably isn't intended (but adding [] would work):
+           u8"readonly Type[Key]"_sv,
+           u8"readonly typeof ns.varname[Key]"_sv
+
+           // Adding [] doesn't make an array type:
+           u8"readonly () => ReturnType[]"_sv,
+           u8"readonly new () => ReturnType[]"_sv,
+           u8"readonly <T>() => ReturnType[]"_sv,
+           u8"readonly unique symbol"_sv,
+           u8"readonly keyof T"_sv,
+           u8"readonly keyof T[]"_sv,
+       }) {
+    SCOPED_TRACE(out_string8(code));
+    test_parser p(code, typescript_options, capture_diags);
+    p.parse_and_visit_typescript_type_expression();
+    EXPECT_THAT(
+        p.errors,
+        ElementsAre(DIAG_TYPE_OFFSETS(
+            p.code, diag_typescript_readonly_in_type_needs_array_or_tuple_type,
+            readonly_keyword, 0, u8"readonly")));
   }
 }
 }

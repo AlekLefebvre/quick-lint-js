@@ -869,6 +869,14 @@ msgid "arrow is here"
 msgstr ""
 
 #: src/quick-lint-js/fe/diagnostic-types.h
+msgid "newline is not allowed between 'async' and 'function'"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "'function' is here"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
 msgid "newline is not allowed after 'abstract'"
 msgstr ""
 
@@ -910,6 +918,14 @@ msgstr ""
 
 #: src/quick-lint-js/fe/diagnostic-types.h
 msgid "use ':' instead of '=' in object literals"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "TypeScript optional parameter requires parentheses"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "TypeScript optional parameter with type annotation requires parentheses"
 msgstr ""
 
 #: src/quick-lint-js/fe/diagnostic-types.h
@@ -1104,6 +1120,18 @@ msgid "index signatures require a value type"
 msgstr ""
 
 #: src/quick-lint-js/fe/diagnostic-types.h
+msgid "function overload signature must be named '{1}'"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "overloaded function '{0}' declared here"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "function overload signature cannot have generator '*'"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
 msgid "generic arrow function needs ',' here in TSX"
 msgstr ""
 
@@ -1173,6 +1201,18 @@ msgstr ""
 
 #: src/quick-lint-js/fe/diagnostic-types.h
 msgid "methods cannot be readonly"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "'readonly' must be followed by an array type or a tuple type"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "readonly array is missing '[]'"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "'readonly' only works with array types and tuple types"
 msgstr ""
 
 #: src/quick-lint-js/fe/diagnostic-types.h
@@ -1386,6 +1426,10 @@ msgstr ""
 
 #: src/quick-lint-js/fe/diagnostic-types.h
 msgid "unmatched '}'"
+msgstr ""
+
+#: src/quick-lint-js/fe/diagnostic-types.h
+msgid "{0} is not the name of a parameter"
 msgstr ""
 
 #: src/quick-lint-js/fe/diagnostic-types.h
